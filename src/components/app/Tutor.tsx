@@ -558,7 +558,3 @@ function CallView({
     </div>
   );
 }
-
-  for (const line of lines) {
-    const trim = line.trim();
-    if (!trim) continue;
