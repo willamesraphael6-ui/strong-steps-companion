@@ -13,9 +13,15 @@ const AVATAR_FALLBACK = "https://api.dicebear.com/9.x/notionists/svg?seed=";
 export function HomeScreen({
   profile,
   onOpenTutor,
+  onOpenFood,
+  onOpenBody,
+  onOpenPaywall,
 }: {
   profile: LocalProfile;
   onOpenTutor: () => void;
+  onOpenFood: () => void;
+  onOpenBody: () => void;
+  onOpenPaywall: () => void;
 }) {
   const { steps, permission, active, requestPermission } = useSteps(profile.id);
   const [missions, setMissions] = useState<
@@ -164,6 +170,21 @@ export function HomeScreen({
           className="font-mono text-[11.5px] text-volt"
         >
           FALAR COM COACH →
+        </button>
+      </div>
+      {/* Quick-action cards */}
+      <div className="px-6 grid grid-cols-3 gap-2 mb-4">
+        <button onClick={onOpenFood} className="bg-iron border border-line rounded-2xl p-3 text-left active:scale-95">
+          <div className="text-2xl">🍽️</div>
+          <div className="font-mono text-[10px] text-volt mt-1">SCAN COMIDA</div>
+        </button>
+        <button onClick={onOpenBody} className="bg-iron border border-line rounded-2xl p-3 text-left active:scale-95">
+          <div className="text-2xl">💪</div>
+          <div className="font-mono text-[10px] text-volt mt-1">FOTO CORPO</div>
+        </button>
+        <button onClick={onOpenPaywall} className="bg-gradient-to-br from-ember/30 to-volt/10 border border-volt/40 rounded-2xl p-3 text-left active:scale-95">
+          <div className="text-2xl">⚡</div>
+          <div className="font-mono text-[10px] text-volt mt-1">PRO R$29,90</div>
         </button>
       </div>
       {missions.map((m) => (

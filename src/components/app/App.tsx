@@ -12,6 +12,9 @@ import { ProfileScreen } from "./ProfileScreen";
 import { Tutor } from "./Tutor";
 import { Nav, type Tab } from "./Nav";
 import { Toast, ToastProvider } from "./Toast";
+import { FoodScanner } from "./FoodScanner";
+import { BodyScan } from "./BodyScan";
+import { Paywall } from "./Paywall";
 
 type Stage = "splash" | "quiz" | "setup" | "notif" | "app";
 
@@ -19,6 +22,7 @@ export function App() {
   const { profile, loading, create, update, reset } = useProfile();
   const [stage, setStage] = useState<Stage>("splash");
   const [tab, setTab] = useState<Tab>("home");
+  const [overlay, setOverlay] = useState<null | "food" | "body" | "paywall">(null);
   const [quizAnswers, setQuizAnswers] = useState<{
     goal?: string;
     level?: string;
@@ -106,7 +110,15 @@ export function App() {
               exit={{ opacity: 0 }}
               className="min-h-screen flex flex-col pb-[92px]"
             >
-              {tab === "home" && <HomeScreen profile={profile} onOpenTutor={() => setTab("tutor")} />}
+              {tab === "home" && (
+                <HomeScreen
+                  profile={profile}
+                  onOpenTutor={() => setTab("tutor")}
+                  onOpenFood={() => setOverlay("food")}
+                  onOpenBody={() => setOverlay("body")}
+                  onOpenPaywall={() => setOverlay("paywall")}
+                />
+              )}
               {tab === "academy" && <Academy profile={profile} onUpdate={update} />}
               {tab === "tutor" && (
                 <div className="min-h-[calc(100vh-92px)] flex flex-col">
@@ -125,6 +137,13 @@ export function App() {
                 />
               )}
               <Nav tab={tab} setTab={setTab} />
+              {overlay && (
+                <div className="fixed inset-0 z-[150] bg-ink overflow-y-auto">
+                  {overlay === "food" && <FoodScanner profile={profile} onClose={() => setOverlay(null)} />}
+                  {overlay === "body" && <BodyScan profile={profile} onClose={() => setOverlay(null)} />}
+                  {overlay === "paywall" && <Paywall profile={profile} onClose={() => setOverlay(null)} />}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
