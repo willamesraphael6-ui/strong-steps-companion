@@ -11,12 +11,28 @@ export function NotifPrompt({
   const ask = async () => {
     setBusy(true);
     try {
-      if (
-        typeof window !== "undefined" &&
-        "Notification" in window &&
-        Notification.permission !== "granted"
-      ) {
-        const res = await Notification.requestPermission();
+      if (typeof window === "undefined" || !("Notification" in window)) {
+        toast("Este navegador não suporta notificações", "⚠️");
+        onDone(false);
+        return;
+      }
+      if (Notification.permission === "granted") {
+        try {
+          new Notification("Passos Fortes ativo 💪", {
+            body: "Vou te lembrar todo dia.",
+            icon: "/favicon.ico",
+          });
+        } catch {}
+        onDone(true);
+        return;
+      }
+      if (Notification.permission === "denied") {
+        toast("Bloqueado. Libere nas configurações do navegador.", "⚠️");
+        onDone(false);
+        return;
+      }
+      // 'default' — pedir permissão. Requer gesto do usuário (temos: clique)
+      const res = await Notification.requestPermission();
         if (res === "granted") {
           try {
             new Notification("Passos Fortes ativo 💪", {
@@ -28,17 +44,7 @@ export function NotifPrompt({
           onDone(true);
           return;
         }
-        toast("Notificações não permitidas.", "⚠️");
-        onDone(false);
-        return;
-      }
-      if (
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted"
-      ) {
-        onDone(true);
-        return;
-      }
+      toast("Você negou. Pode liberar depois no cadeado da URL.", "⚠️");
       onDone(false);
     } finally {
       setBusy(false);
