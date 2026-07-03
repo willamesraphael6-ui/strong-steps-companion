@@ -207,9 +207,10 @@ function CallView({
 }) {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [handsFree, setHandsFree] = useState(true);
   const [status, setStatus] = useState<
-    "idle" | "listening" | "thinking" | "speaking" | "error"
-  >("idle");
+    "starting" | "idle" | "listening" | "thinking" | "speaking" | "error"
+  >("starting");
   const [transcript, setTranscript] = useState("");
   const [reply, setReply] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -217,28 +218,45 @@ function CallView({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>(
-    [],
-  );
+  const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const speakingRef = useRef(false);
+  const silenceStartRef = useRef<number>(0);
+  const statusRef = useRef(status);
+  useEffect(() => { statusRef.current = status; }, [status]);
+  const handsFreeRef = useRef(handsFree);
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
 
-  // Start camera + mic
+  // Start camera + mic + VAD loop
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: { echoCancellation: true, noiseSuppression: true },
           video: { facingMode: "user", width: 640, height: 480 },
         });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {});
         }
+        // Set up VAD analyser
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioCtx();
+        audioCtxRef.current = ctx;
+        const src = ctx.createMediaStreamSource(new MediaStream(stream.getAudioTracks()));
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        src.connect(analyser);
+        analyserRef.current = analyser;
+        setStatus("idle");
+        startVadLoop();
+        // Auto-start recording in hands-free
+        if (handsFreeRef.current) startRecording();
       } catch (e) {
         console.error(e);
         setStatus("error");
@@ -246,41 +264,50 @@ function CallView({
     })();
     return () => {
       cancelled = true;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       recorderRef.current?.stop();
       audioRef.current?.pause();
+      audioCtxRef.current?.close().catch(() => {});
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    streamRef.current
-      ?.getAudioTracks()
-      .forEach((t) => (t.enabled = micOn));
+    streamRef.current?.getAudioTracks().forEach((t) => (t.enabled = micOn));
   }, [micOn]);
   useEffect(() => {
-    streamRef.current
-      ?.getVideoTracks()
-      .forEach((t) => (t.enabled = camOn));
+    streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = camOn));
   }, [camOn]);
 
+  const captureFrame = (): string | undefined => {
+    if (!camOn || !videoRef.current) return;
+    const v = videoRef.current;
+    if (!v.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = Math.round((320 * v.videoHeight) / v.videoWidth) || 240;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.6);
+  };
+
   const startRecording = () => {
-    if (!streamRef.current || status === "thinking" || status === "speaking")
-      return;
-    const audioStream = new MediaStream(
-      streamRef.current.getAudioTracks(),
-    );
-    const mime = MediaRecorder.isTypeSupported("audio/webm")
-      ? "audio/webm"
-      : "audio/mp4";
+    if (!streamRef.current || !micOn) return;
+    if (recorderRef.current?.state === "recording") return;
+    const audioStream = new MediaStream(streamRef.current.getAudioTracks());
+    const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
     const rec = new MediaRecorder(audioStream, { mimeType: mime });
     chunksRef.current = [];
-    rec.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
+    speakingRef.current = false;
+    silenceStartRef.current = 0;
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
     rec.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: mime });
-      if (blob.size < 800) {
+      if (blob.size < 1500 || !speakingRef.current) {
         setStatus("idle");
+        if (handsFreeRef.current) setTimeout(() => startRecording(), 200);
         return;
       }
       await processAudio(blob, mime);
@@ -293,8 +320,52 @@ function CallView({
   const stopRecording = () => {
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
-      setStatus("thinking");
     }
+  };
+
+  // Voice-activity loop: watches mic RMS
+  const startVadLoop = () => {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+    const data = new Uint8Array(analyser.fftSize);
+    const SPEAK_THRESHOLD = 18; // 0-128
+    const SILENCE_MS = 1200;
+    const MAX_UTTERANCE_MS = 15000;
+    let recStartedAt = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = data[i] - 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      const now = performance.now();
+      const isRecording = recorderRef.current?.state === "recording";
+      const st = statusRef.current;
+      if (isRecording && st === "listening") {
+        if (!recStartedAt) recStartedAt = now;
+        if (rms > SPEAK_THRESHOLD) {
+          speakingRef.current = true;
+          silenceStartRef.current = 0;
+        } else if (speakingRef.current) {
+          if (!silenceStartRef.current) silenceStartRef.current = now;
+          if (now - silenceStartRef.current > SILENCE_MS) {
+            recStartedAt = 0;
+            stopRecording();
+            setStatus("thinking");
+          }
+        }
+        if (recStartedAt && now - recStartedAt > MAX_UTTERANCE_MS) {
+          recStartedAt = 0;
+          if (speakingRef.current) { stopRecording(); setStatus("thinking"); }
+        }
+      } else {
+        recStartedAt = 0;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
   };
 
   const processAudio = async (blob: Blob, mime: string) => {
@@ -311,32 +382,29 @@ function CallView({
       const userText = (sttData.text || "").trim();
       if (!userText) {
         setStatus("idle");
+        if (handsFreeRef.current) setTimeout(() => startRecording(), 200);
         return;
       }
       setTranscript(userText);
-      historyRef.current.push({ role: "user", content: userText });
 
-      // Get reply (non-streaming for simplicity in call mode)
-      const chatRes = await fetch("/api/chat", {
+      const frame = captureFrame();
+      const res = await fetch("/api/tutor-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: historyRef.current.map((m, i) => ({
-            id: String(i),
-            role: m.role,
-            parts: [{ type: "text", text: m.content }],
-          })),
-          systemContext: `Você está em uma chamada de voz com ${profileName}. Respostas MUITO curtas (1-3 frases), tom natural de conversa falada. Sem listas nem markdown.`,
+          transcript: userText,
+          history: historyRef.current.slice(-8),
+          imageDataUrl: frame,
+          systemContext: `Aluno: ${profileName}. Você pode ver a câmera dele — comente forma/postura só se pediram ou se algo estiver claramente errado.`,
         }),
       });
-      const chatText = await chatRes.text();
-      // Parse UI message stream (SSE-like data lines). Extract text-delta tokens.
-      const replyText = extractReplyFromStream(chatText);
+      if (!res.ok) throw new Error("chat failed");
+      const { reply: replyText } = (await res.json()) as { reply?: string };
       if (!replyText) throw new Error("no reply");
+      historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: replyText });
       setReply(replyText);
 
-      // TTS
       setStatus("speaking");
       const ttsRes = await fetch("/api/tts", {
         method: "POST",
@@ -349,15 +417,26 @@ function CallView({
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.onended = () => {
-        setStatus("idle");
         URL.revokeObjectURL(url);
+        setStatus("idle");
+        if (handsFreeRef.current) setTimeout(() => startRecording(), 250);
       };
       await audio.play();
     } catch (e) {
       console.error(e);
       setStatus("error");
-      setTimeout(() => setStatus("idle"), 1500);
+      setTimeout(() => {
+        setStatus("idle");
+        if (handsFreeRef.current) startRecording();
+      }, 1500);
     }
+  };
+
+  const toggleHandsFree = () => {
+    const next = !handsFree;
+    setHandsFree(next);
+    if (next && statusRef.current === "idle") startRecording();
+    if (!next) stopRecording();
   };
 
   return (

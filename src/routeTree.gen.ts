@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiTutorCallRouteImport } from './routes/api/tutor-call'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiLessonRouteImport } from './routes/api/lesson'
@@ -20,6 +21,11 @@ import { Route as ApiAnalyzeImageRouteImport } from './routes/api/analyze-image'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTutorCallRoute = ApiTutorCallRouteImport.update({
+  id: '/api/tutor-call',
+  path: '/api/tutor-call',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTtsRoute = ApiTtsRouteImport.update({
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/tutor-call': typeof ApiTutorCallRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/tutor-call': typeof ApiTutorCallRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
+  '/api/tutor-call': typeof ApiTutorCallRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
+    | '/api/tutor-call'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
+    | '/api/tutor-call'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
+    | '/api/tutor-call'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   ApiLessonRoute: typeof ApiLessonRoute
   ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
+  ApiTutorCallRoute: typeof ApiTutorCallRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tutor-call': {
+      id: '/api/tutor-call'
+      path: '/api/tutor-call'
+      fullPath: '/api/tutor-call'
+      preLoaderRoute: typeof ApiTutorCallRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tts': {
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLessonRoute: ApiLessonRoute,
   ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,
+  ApiTutorCallRoute: ApiTutorCallRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
