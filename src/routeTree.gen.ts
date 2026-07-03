@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiLessonRouteImport } from './routes/api/lesson'
+import { Route as ApiKryptPixRouteImport } from './routes/api/krypt-pix'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAnalyzeImageRouteImport } from './routes/api/analyze-image'
 
@@ -36,6 +37,11 @@ const ApiLessonRoute = ApiLessonRouteImport.update({
   path: '/api/lesson',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKryptPixRoute = ApiKryptPixRouteImport.update({
+  id: '/api/krypt-pix',
+  path: '/api/krypt-pix',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/krypt-pix': typeof ApiKryptPixRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/krypt-pix': typeof ApiKryptPixRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/krypt-pix': typeof ApiKryptPixRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/analyze-image'
     | '/api/chat'
+    | '/api/krypt-pix'
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/analyze-image'
     | '/api/chat'
+    | '/api/krypt-pix'
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/analyze-image'
     | '/api/chat'
+    | '/api/krypt-pix'
     | '/api/lesson'
     | '/api/stt'
     | '/api/tts'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiAnalyzeImageRoute: typeof ApiAnalyzeImageRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiKryptPixRoute: typeof ApiKryptPixRoute
   ApiLessonRoute: typeof ApiLessonRoute
   ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLessonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/krypt-pix': {
+      id: '/api/krypt-pix'
+      path: '/api/krypt-pix'
+      fullPath: '/api/krypt-pix'
+      preLoaderRoute: typeof ApiKryptPixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiAnalyzeImageRoute: ApiAnalyzeImageRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiKryptPixRoute: ApiKryptPixRoute,
   ApiLessonRoute: ApiLessonRoute,
   ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,
