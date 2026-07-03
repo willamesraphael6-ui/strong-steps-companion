@@ -469,11 +469,12 @@ function CallView({
         <div className="text-center">
           <div className="font-display text-2xl">COACH PF</div>
           <div className="font-mono text-xs text-volt mt-1">
-            {status === "idle" && "toque para falar"}
+            {status === "starting" && "iniciando câmera…"}
+            {status === "idle" && (handsFree ? "pode falar…" : "microfone parado")}
             {status === "listening" && "ouvindo…"}
             {status === "thinking" && "pensando…"}
             {status === "speaking" && "falando…"}
-            {status === "error" && "erro — tenta de novo"}
+            {status === "error" && "erro — reconectando…"}
           </div>
         </div>
         {transcript && (
@@ -524,20 +525,14 @@ function CallView({
           {micOn ? "🎙️" : "🔇"}
         </button>
         <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onTouchStart={startRecording}
-          onTouchEnd={stopRecording}
-          disabled={!micOn || status === "thinking" || status === "speaking"}
+          onClick={toggleHandsFree}
           className={
-            "w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-ink active:scale-95 transition disabled:opacity-40 " +
-            (status === "listening"
-              ? "bg-ember animate-pulse"
-              : "bg-volt")
+            "w-20 h-20 rounded-full flex items-center justify-center text-xs font-mono font-bold text-ink active:scale-95 transition " +
+            (status === "listening" ? "bg-ember animate-pulse" : handsFree ? "bg-volt" : "bg-steel text-paper")
           }
-          aria-label="Segure para falar"
+          aria-label="Hands-free"
         >
-          {status === "listening" ? "●" : "🎤"}
+          {status === "listening" ? "●●●" : handsFree ? "AUTO" : "OFF"}
         </button>
         <button
           onClick={() => setCamOn((v) => !v)}
@@ -558,16 +553,12 @@ function CallView({
         </button>
       </div>
       <p className="text-[11px] text-paper-dim text-center px-6 -mt-16 mb-2 font-mono">
-        Segure o botão verde para falar. Solte para o coach responder.
+        {handsFree ? "Modo hands-free: fale à vontade, o coach responde sozinho." : "Toque AUTO para reativar."}
       </p>
     </div>
   );
 }
 
-function extractReplyFromStream(raw: string): string {
-  // Handles AI SDK UI message stream (data: {json}\n\n lines) or plain text.
-  let out = "";
-  const lines = raw.split(/\r?\n/);
   for (const line of lines) {
     const trim = line.trim();
     if (!trim) continue;
