@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "./Toast";
 import type { LocalProfile } from "@/lib/profile-storage";
 
@@ -15,39 +16,43 @@ const langs = [
   { code: "ar", name: "Árabe", flag: "🇸🇦", voice: "onyx" },
 ];
 
-type Lesson = {
+type Task = {
+  id: string;
   title: string;
-  phrases: { target: string; pt: string; pron: string }[];
-  quiz: { q: string; options: string[]; answer: number }[];
+  target: string;
+  translation_pt: string;
+  pronunciation: string | null;
+  difficulty: number;
+  category: string;
 };
 
-export function Languages({ profile: _profile }: { profile: LocalProfile }) {
+export function Languages({ profile }: { profile: LocalProfile }) {
   const [selected, setSelected] = useState<(typeof langs)[number] | null>(null);
-  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [done, setDone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
-  const [quizIdx, setQuizIdx] = useState(0);
-  const [quizPick, setQuizPick] = useState<number | null>(null);
+  const [active, setActive] = useState<Task | null>(null);
 
-  const loadLesson = async (lang: (typeof langs)[number]) => {
-    setSelected(lang);
+  useEffect(() => {
+    if (!selected) return;
     setLoading(true);
-    setLesson(null);
-    setQuizIdx(0);
-    setQuizPick(null);
-    try {
-      const res = await fetch("/api/lesson", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: lang.name }),
-      });
-      const data = (await res.json()) as Lesson;
-      setLesson(data);
-    } catch {
-      toast("Erro ao carregar lição", "⚠️");
-    } finally {
+    (async () => {
+      const [{ data: t }, { data: p }] = await Promise.all([
+        supabase
+          .from("language_tasks")
+          .select("*")
+          .eq("lang_code", selected.code)
+          .order("order_index"),
+        supabase
+          .from("user_task_progress")
+          .select("task_id")
+          .eq("profile_id", profile.id),
+      ]);
+      setTasks((t || []) as Task[]);
+      setDone(new Set((p || []).map((r) => r.task_id as string)));
       setLoading(false);
-    }
-  };
+    })();
+  }, [selected, profile.id]);
 
   const playAudio = async (text: string, voice: string) => {
     try {
@@ -67,115 +72,90 @@ export function Languages({ profile: _profile }: { profile: LocalProfile }) {
     }
   };
 
-  if (selected && lesson) {
-    const currentQ = lesson.quiz[quizIdx];
+  const markDone = async (t: Task) => {
+    if (done.has(t.id)) return;
+    setDone(new Set([...done, t.id]));
+    await supabase.from("user_task_progress").upsert({
+      profile_id: profile.id, task_id: t.id, score: 10,
+    }, { onConflict: "profile_id,task_id" });
+    toast(`+10 XP — ${t.title}`, "🎉");
+  };
+
+  if (active && selected) {
     return (
       <div className="pb-4">
-        <button
-          onClick={() => {
-            setSelected(null);
-            setLesson(null);
-          }}
-          className="mx-6 mt-5 font-mono text-xs text-paper-dim"
-        >
-          ← IDIOMAS
+        <button onClick={() => setActive(null)} className="mx-6 mt-5 font-mono text-xs text-paper-dim">
+          ← TAREFAS
         </button>
         <div className="px-6 pt-2">
           <div className="text-4xl mb-1">{selected.flag}</div>
-          <h2 className="text-[26px]">{lesson.title}</h2>
-          <p className="eyebrow mt-1">{selected.name}</p>
+          <p className="eyebrow mt-1">{selected.name} · nível {active.difficulty}</p>
+          <h2 className="text-[22px] mt-1">{active.title}</h2>
         </div>
         <div className="px-6 pt-6">
-          <h3 className="font-display text-lg mb-3 tracking-wide">
-            FRASES
-          </h3>
-          {lesson.phrases.map((p, i) => (
-            <div
-              key={i}
-              className="bg-iron border border-line rounded-2xl p-4 mb-2.5"
+          <div className="bg-iron border border-line rounded-2xl p-5">
+            <div className="text-[22px] font-semibold text-volt">{active.target}</div>
+            <div className="text-sm text-paper mt-2">{active.translation_pt}</div>
+            {active.pronunciation && (
+              <div className="font-mono text-[11px] text-paper-dim mt-2">/{active.pronunciation}/</div>
+            )}
+            <button
+              onClick={() => playAudio(active.target, selected.voice)}
+              className="btn-pf bg-volt text-ink mt-4"
             >
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex-1">
-                  <div className="text-[17px] font-semibold text-volt">
-                    {p.target}
-                  </div>
-                  <div className="text-sm text-paper mt-1">{p.pt}</div>
-                  <div className="font-mono text-[11px] text-paper-dim mt-1">
-                    /{p.pron}/
-                  </div>
-                </div>
-                <button
-                  onClick={() => playAudio(p.target, selected.voice)}
-                  className="w-10 h-10 rounded-full bg-volt text-ink flex items-center justify-center text-lg shrink-0 active:scale-95"
-                >
-                  🔊
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-        {currentQ && (
-          <div className="px-6 pt-6">
-            <h3 className="font-display text-lg mb-3 tracking-wide">
-              QUIZ ({quizIdx + 1}/{lesson.quiz.length})
-            </h3>
-            <div className="bg-iron border border-line rounded-2xl p-5">
-              <p className="text-[15px] mb-4">{currentQ.q}</p>
-              <div className="space-y-2">
-                {currentQ.options.map((opt, i) => {
-                  const chosen = quizPick === i;
-                  const correct = quizPick !== null && i === currentQ.answer;
-                  const wrong = chosen && i !== currentQ.answer;
-                  return (
-                    <button
-                      key={i}
-                      disabled={quizPick !== null}
-                      onClick={() => setQuizPick(i)}
-                      className={
-                        "w-full text-left px-4 py-3 rounded-xl border text-[14.5px] " +
-                        (correct
-                          ? "bg-volt/20 border-volt"
-                          : wrong
-                            ? "bg-ember/20 border-ember"
-                            : "bg-ink border-line")
-                      }
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-              {quizPick !== null && (
-                <button
-                  onClick={() => {
-                    if (quizIdx < lesson.quiz.length - 1) {
-                      setQuizIdx(quizIdx + 1);
-                      setQuizPick(null);
-                    } else {
-                      toast("Lição concluída! +30 XP", "🎉");
-                      setSelected(null);
-                      setLesson(null);
-                    }
-                  }}
-                  className="btn-pf bg-volt text-ink mt-4"
-                >
-                  {quizIdx < lesson.quiz.length - 1 ? "PRÓXIMA" : "TERMINAR"}
-                </button>
-              )}
-            </div>
+              🔊 OUVIR PRONÚNCIA
+            </button>
+            <button
+              onClick={async () => { await markDone(active); setActive(null); }}
+              className="btn-pf bg-transparent border border-line text-paper mt-2"
+            >
+              {done.has(active.id) ? "JÁ FEITA — VOLTAR" : "MARCAR COMO FEITA (+10 XP)"}
+            </button>
           </div>
-        )}
+        </div>
       </div>
     );
   }
 
-  if (selected && loading) {
+  if (selected) {
+    const doneCount = tasks.filter((t) => done.has(t.id)).length;
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 pt-40">
-        <div className="text-4xl animate-pulse">{selected.flag}</div>
-        <div className="font-mono text-xs text-volt tracking-wider">
-          GERANDO SUA LIÇÃO…
+      <div className="pb-4">
+        <button onClick={() => setSelected(null)} className="mx-6 mt-5 font-mono text-xs text-paper-dim">
+          ← IDIOMAS
+        </button>
+        <div className="px-6 pt-2">
+          <div className="text-4xl mb-1">{selected.flag}</div>
+          <h2 className="text-[26px]">{selected.name}</h2>
+          <p className="text-paper-dim text-sm mt-1">
+            {doneCount}/{tasks.length} tarefas completas
+          </p>
         </div>
+        {loading ? (
+          <div className="text-center pt-10 font-mono text-volt animate-pulse">CARREGANDO…</div>
+        ) : (
+          <div className="px-6 pt-5 space-y-2">
+            {tasks.map((t) => {
+              const isDone = done.has(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActive(t)}
+                  className="w-full text-left bg-iron border border-line rounded-2xl p-4 flex items-center gap-3 active:scale-[.99]"
+                >
+                  <div className={"w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 " + (isDone ? "bg-volt text-ink" : "bg-steel")}>
+                    {isDone ? "✓" : t.difficulty}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14.5px] font-semibold text-volt truncate">{t.target}</div>
+                    <div className="text-[12px] text-paper-dim truncate">{t.translation_pt}</div>
+                  </div>
+                  <div className="font-mono text-[10px] text-paper-dim uppercase">{t.category}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
@@ -186,14 +166,14 @@ export function Languages({ profile: _profile }: { profile: LocalProfile }) {
         <div className="eyebrow">Aprenda no seu ritmo</div>
         <h1 className="text-[30px] mt-1">Escolha um idioma</h1>
         <p className="text-paper-dim text-sm mt-2">
-          Lições geradas pela IA, com áudio nativo. Toque em qualquer bandeira.
+          120+ tarefas reais salvas no banco, com áudio nativo. Toque em qualquer bandeira.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 px-6 pt-6">
         {langs.map((l) => (
           <button
             key={l.code}
-            onClick={() => loadLesson(l)}
+            onClick={() => setSelected(l)}
             className="bg-iron border border-line rounded-2xl p-5 flex flex-col items-start gap-2 active:scale-[.97] transition"
           >
             <div className="text-4xl">{l.flag}</div>
