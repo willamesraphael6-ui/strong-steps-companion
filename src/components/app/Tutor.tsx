@@ -562,21 +562,3 @@ function CallView({
   for (const line of lines) {
     const trim = line.trim();
     if (!trim) continue;
-    const data = trim.startsWith("data:") ? trim.slice(5).trim() : trim;
-    if (data === "[DONE]") continue;
-    try {
-      const obj = JSON.parse(data);
-      // v5 UI stream shapes
-      if (obj.type === "text-delta" && typeof obj.delta === "string") {
-        out += obj.delta;
-      } else if (obj.type === "text" && typeof obj.text === "string") {
-        out += obj.text;
-      } else if (typeof obj.textDelta === "string") {
-        out += obj.textDelta;
-      }
-    } catch {
-      // ignore non-json lines
-    }
-  }
-  return out.trim();
-}
