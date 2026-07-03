@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      body_analyses: {
+        Row: {
+          body_type: string | null
+          created_at: string
+          focus_areas: string | null
+          id: string
+          image_url: string | null
+          profile_id: string
+          recommendations: string | null
+          strengths: string | null
+        }
+        Insert: {
+          body_type?: string | null
+          created_at?: string
+          focus_areas?: string | null
+          id?: string
+          image_url?: string | null
+          profile_id: string
+          recommendations?: string | null
+          strengths?: string | null
+        }
+        Update: {
+          body_type?: string | null
+          created_at?: string
+          focus_areas?: string | null
+          id?: string
+          image_url?: string | null
+          profile_id?: string
+          recommendations?: string | null
+          strengths?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -105,6 +138,78 @@ export type Database = {
           },
         ]
       }
+      food_analyses: {
+        Row: {
+          calories_estimate: number | null
+          can_eat: boolean
+          created_at: string
+          id: string
+          image_url: string | null
+          notes: string | null
+          profile_id: string
+          verdict: string
+        }
+        Insert: {
+          calories_estimate?: number | null
+          can_eat?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          profile_id: string
+          verdict: string
+        }
+        Update: {
+          calories_estimate?: number | null
+          can_eat?: boolean
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          profile_id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
+      language_tasks: {
+        Row: {
+          category: string
+          created_at: string
+          difficulty: number
+          id: string
+          lang_code: string
+          order_index: number
+          pronunciation: string | null
+          target: string
+          title: string
+          translation_pt: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          difficulty?: number
+          id?: string
+          lang_code: string
+          order_index?: number
+          pronunciation?: string | null
+          target: string
+          title: string
+          translation_pt: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          difficulty?: number
+          id?: string
+          lang_code?: string
+          order_index?: number
+          pronunciation?: string | null
+          target?: string
+          title?: string
+          translation_pt?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -150,6 +255,75 @@ export type Database = {
           preferred_language?: string | null
           updated_at?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          expires_at: string | null
+          id: string
+          paid_at: string | null
+          pix_code: string | null
+          pix_qr: string | null
+          profile_id: string
+          provider: string
+          provider_ref: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          paid_at?: string | null
+          pix_code?: string | null
+          pix_qr?: string | null
+          profile_id: string
+          provider?: string
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          paid_at?: string | null
+          pix_code?: string | null
+          pix_qr?: string | null
+          profile_id?: string
+          provider?: string
+          provider_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_task_progress: {
+        Row: {
+          completed_at: string
+          id: string
+          profile_id: string
+          score: number
+          task_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          profile_id: string
+          score?: number
+          task_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          profile_id?: string
+          score?: number
+          task_id?: string
         }
         Relationships: []
       }
