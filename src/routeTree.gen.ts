@@ -14,6 +14,7 @@ import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiLessonRouteImport } from './routes/api/lesson'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiAnalyzeImageRouteImport } from './routes/api/analyze-image'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,9 +41,15 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAnalyzeImageRoute = ApiAnalyzeImageRouteImport.update({
+  id: '/api/analyze-image',
+  path: '/api/analyze-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/analyze-image': typeof ApiAnalyzeImageRoute
   '/api/chat': typeof ApiChatRoute
   '/api/lesson': typeof ApiLessonRoute
   '/api/stt': typeof ApiSttRoute
@@ -65,14 +74,34 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/chat' | '/api/lesson' | '/api/stt' | '/api/tts'
+  fullPaths:
+    | '/'
+    | '/api/analyze-image'
+    | '/api/chat'
+    | '/api/lesson'
+    | '/api/stt'
+    | '/api/tts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/chat' | '/api/lesson' | '/api/stt' | '/api/tts'
-  id: '__root__' | '/' | '/api/chat' | '/api/lesson' | '/api/stt' | '/api/tts'
+  to:
+    | '/'
+    | '/api/analyze-image'
+    | '/api/chat'
+    | '/api/lesson'
+    | '/api/stt'
+    | '/api/tts'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/analyze-image'
+    | '/api/chat'
+    | '/api/lesson'
+    | '/api/stt'
+    | '/api/tts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiAnalyzeImageRoute: typeof ApiAnalyzeImageRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiLessonRoute: typeof ApiLessonRoute
   ApiSttRoute: typeof ApiSttRoute
@@ -116,11 +145,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/analyze-image': {
+      id: '/api/analyze-image'
+      path: '/api/analyze-image'
+      fullPath: '/api/analyze-image'
+      preLoaderRoute: typeof ApiAnalyzeImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiAnalyzeImageRoute: ApiAnalyzeImageRoute,
   ApiChatRoute: ApiChatRoute,
   ApiLessonRoute: ApiLessonRoute,
   ApiSttRoute: ApiSttRoute,
