@@ -228,6 +228,7 @@ function CallView({
   useEffect(() => { statusRef.current = status; }, [status]);
   const handsFreeRef = useRef(handsFree);
   useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
+  const introDoneRef = useRef(false);
 
   // Start camera + mic + VAD loop
   useEffect(() => {
@@ -255,8 +256,8 @@ function CallView({
         analyserRef.current = analyser;
         setStatus("idle");
         startVadLoop();
-        // Auto-start recording in hands-free
-        if (handsFreeRef.current) startRecording();
+        // Coach speaks first, then starts listening.
+        void coachIntro();
       } catch (e) {
         console.error(e);
         setStatus("error");
@@ -279,6 +280,56 @@ function CallView({
   useEffect(() => {
     streamRef.current?.getVideoTracks().forEach((t) => (t.enabled = camOn));
   }, [camOn]);
+
+  const speak = async (text: string) => {
+    setStatus("speaking");
+    setReply(text);
+    try {
+      const ttsRes = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: "onyx" }),
+      });
+      if (!ttsRes.ok) throw new Error("TTS failed");
+      const audioBlob = await ttsRes.blob();
+      const url = URL.createObjectURL(audioBlob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      await new Promise<void>((resolve) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        audio.play().catch(() => resolve());
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const coachIntro = async () => {
+    if (introDoneRef.current) return;
+    introDoneRef.current = true;
+    try {
+      // Ask the AI to open the session and propose an exercise
+      const res = await fetch("/api/tutor-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: `[SISTEMA] A chamada acabou de começar. Cumprimente ${profileName} pelo nome, proponha um treino curto de 5 minutos (agachamento, prancha, polichinelo) e diga para começar pelo primeiro exercício com boa forma. NÃO faça perguntas — dê o comando direto.`,
+          history: [],
+          systemContext: `Aluno: ${profileName}. Você inicia a conversa; ele ainda não falou nada.`,
+        }),
+      });
+      const { reply: replyText } = (await res.json().catch(() => ({}))) as { reply?: string };
+      const line = replyText || `Fala ${profileName}! Bora com 5 min: 10 agachamentos, 20 seg de prancha, 30 polichinelos. Começa pelo agachamento — costas retas, joelho na linha do pé.`;
+      historyRef.current.push({ role: "assistant", content: line });
+      await speak(line);
+    } finally {
+      setStatus("idle");
+      if (handsFreeRef.current) setTimeout(() => startRecording(), 250);
+    }
+  };
 
   const captureFrame = (): string | undefined => {
     if (!camOn || !videoRef.current) return;
@@ -403,25 +454,9 @@ function CallView({
       if (!replyText) throw new Error("no reply");
       historyRef.current.push({ role: "user", content: userText });
       historyRef.current.push({ role: "assistant", content: replyText });
-      setReply(replyText);
-
-      setStatus("speaking");
-      const ttsRes = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: replyText, voice: "onyx" }),
-      });
-      if (!ttsRes.ok) throw new Error("TTS failed");
-      const audioBlob = await ttsRes.blob();
-      const url = URL.createObjectURL(audioBlob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        setStatus("idle");
-        if (handsFreeRef.current) setTimeout(() => startRecording(), 250);
-      };
-      await audio.play();
+      await speak(replyText);
+      setStatus("idle");
+      if (handsFreeRef.current) setTimeout(() => startRecording(), 250);
     } catch (e) {
       console.error(e);
       setStatus("error");

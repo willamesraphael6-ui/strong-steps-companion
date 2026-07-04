@@ -16,12 +16,14 @@ export function HomeScreen({
   onOpenFood,
   onOpenBody,
   onOpenPaywall,
+  onOpenShorts,
 }: {
   profile: LocalProfile;
   onOpenTutor: () => void;
   onOpenFood: () => void;
   onOpenBody: () => void;
   onOpenPaywall: () => void;
+  onOpenShorts: () => void;
 }) {
   const { steps, permission, active, requestPermission } = useSteps(profile.id);
   const [missions, setMissions] = useState<
@@ -173,18 +175,22 @@ export function HomeScreen({
         </button>
       </div>
       {/* Quick-action cards */}
-      <div className="px-6 grid grid-cols-3 gap-2 mb-4">
+      <div className="px-6 grid grid-cols-4 gap-2 mb-4">
         <button onClick={onOpenFood} className="bg-iron border border-line rounded-2xl p-3 text-left active:scale-95">
           <div className="text-2xl">🍽️</div>
-          <div className="font-mono text-[10px] text-volt mt-1">SCAN COMIDA</div>
+          <div className="font-mono text-[10px] text-volt mt-1">COMIDA</div>
         </button>
         <button onClick={onOpenBody} className="bg-iron border border-line rounded-2xl p-3 text-left active:scale-95">
           <div className="text-2xl">💪</div>
-          <div className="font-mono text-[10px] text-volt mt-1">FOTO CORPO</div>
+          <div className="font-mono text-[10px] text-volt mt-1">CORPO</div>
+        </button>
+        <button onClick={onOpenShorts} className="bg-iron border border-line rounded-2xl p-3 text-left active:scale-95">
+          <div className="text-2xl">▶️</div>
+          <div className="font-mono text-[10px] text-volt mt-1">SHORTS</div>
         </button>
         <button onClick={onOpenPaywall} className="bg-gradient-to-br from-ember/30 to-volt/10 border border-volt/40 rounded-2xl p-3 text-left active:scale-95">
           <div className="text-2xl">⚡</div>
-          <div className="font-mono text-[10px] text-volt mt-1">PRO R$29,90</div>
+          <div className="font-mono text-[10px] text-volt mt-1">PRO</div>
         </button>
       </div>
       {missions.map((m) => (
