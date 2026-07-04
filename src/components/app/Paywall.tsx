@@ -9,14 +9,19 @@ type PixResponse = {
     id?: string;
     pixCode?: string;
     pixCopyPaste?: string;
+    copyPaste?: string;
     qrCode?: string;
     qrCodeBase64?: string;
+    qrCodeUrl?: string;
+    transactionId?: string;
     expiresAt?: string;
   };
   pixCode?: string;
   pixCopyPaste?: string;
+  copyPaste?: string;
   qrCode?: string;
   qrCodeBase64?: string;
+  qrCodeUrl?: string;
   id?: string;
   transactionId?: string;
   expiresAt?: string;
@@ -76,9 +81,21 @@ export function Paywall({
         return;
       }
       const inner = data.data || data;
-      const code = inner.pixCopyPaste || inner.pixCode || "";
-      const qr = inner.qrCodeBase64 || inner.qrCode || undefined;
-      const id = inner.id || (data as { transactionId?: string }).transactionId || undefined;
+      const code =
+        inner.copyPaste ||
+        inner.pixCopyPaste ||
+        inner.pixCode ||
+        "";
+      const qr =
+        inner.qrCodeBase64 ||
+        inner.qrCodeUrl ||
+        inner.qrCode ||
+        undefined;
+      const id =
+        inner.transactionId ||
+        inner.id ||
+        (data as { transactionId?: string }).transactionId ||
+        undefined;
       if (!code) {
         toast("Krypt não retornou código PIX", "⚠️");
         console.error("Krypt response", data);
@@ -138,7 +155,11 @@ export function Paywall({
           <div className="font-display text-lg mb-3">SEU PIX</div>
           {pix.qr && (
             <img
-              src={pix.qr.startsWith("data:") ? pix.qr : `data:image/png;base64,${pix.qr}`}
+              src={
+                pix.qr.startsWith("data:") || pix.qr.startsWith("http")
+                  ? pix.qr
+                  : `data:image/png;base64,${pix.qr}`
+              }
               alt="QR PIX"
               className="w-full max-w-[240px] mx-auto rounded-xl bg-white p-2"
             />
