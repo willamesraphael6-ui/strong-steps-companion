@@ -15,6 +15,9 @@ import { Toast, ToastProvider } from "./Toast";
 import { FoodScanner } from "./FoodScanner";
 import { BodyScan } from "./BodyScan";
 import { Paywall } from "./Paywall";
+import { Shorts } from "./Shorts";
+import { Settings } from "./Settings";
+import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
 
 type Stage = "splash" | "quiz" | "setup" | "notif" | "app";
 
@@ -22,11 +25,15 @@ export function App() {
   const { profile, loading, create, update, reset } = useProfile();
   const [stage, setStage] = useState<Stage>("splash");
   const [tab, setTab] = useState<Tab>("home");
-  const [overlay, setOverlay] = useState<null | "food" | "body" | "paywall">(null);
+  const [overlay, setOverlay] = useState<
+    null | "food" | "body" | "paywall" | "shorts" | "settings"
+  >(null);
   const [quizAnswers, setQuizAnswers] = useState<{
     goal?: string;
     level?: string;
   }>({});
+
+  useNotificationScheduler(!!profile?.notifications_enabled);
 
   useEffect(() => {
     if (loading) return;
@@ -117,6 +124,7 @@ export function App() {
                   onOpenFood={() => setOverlay("food")}
                   onOpenBody={() => setOverlay("body")}
                   onOpenPaywall={() => setOverlay("paywall")}
+                  onOpenShorts={() => setOverlay("shorts")}
                 />
               )}
               {tab === "academy" && <Academy profile={profile} onUpdate={update} />}
@@ -134,6 +142,7 @@ export function App() {
                     setStage("splash");
                   }}
                   onUpdate={update}
+                  onOpenSettings={() => setOverlay("settings")}
                 />
               )}
               <Nav tab={tab} setTab={setTab} />
@@ -142,6 +151,10 @@ export function App() {
                   {overlay === "food" && <FoodScanner profile={profile} onClose={() => setOverlay(null)} />}
                   {overlay === "body" && <BodyScan profile={profile} onClose={() => setOverlay(null)} />}
                   {overlay === "paywall" && <Paywall profile={profile} onClose={() => setOverlay(null)} />}
+                  {overlay === "shorts" && <Shorts onClose={() => setOverlay(null)} />}
+                  {overlay === "settings" && (
+                    <Settings profile={profile} onClose={() => setOverlay(null)} onUpdate={update} />
+                  )}
                 </div>
               )}
             </motion.div>

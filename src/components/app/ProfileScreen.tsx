@@ -19,10 +19,12 @@ export function ProfileScreen({
   profile,
   onReset,
   onUpdate,
+  onOpenSettings,
 }: {
   profile: LocalProfile;
   onReset: () => void;
   onUpdate: (p: Partial<LocalProfile>) => Promise<void>;
+  onOpenSettings: () => void;
 }) {
   const [notif, setNotif] = useState(!!profile.notifications_enabled);
   const { level } = levelFromXp(profile.xp);
@@ -66,6 +68,15 @@ export function ProfileScreen({
       <h3 className="font-display text-lg tracking-wide px-6 pt-8 mb-2">
         CONQUISTAS
       </h3>
+      <div className="px-6 mb-4">
+        <button
+          onClick={onOpenSettings}
+          className="w-full bg-iron border border-line rounded-2xl px-4 py-3 flex items-center justify-between active:scale-[.99]"
+        >
+          <span className="text-[14.5px]">⚙️ Configurações</span>
+          <span className="text-paper-dim">›</span>
+        </button>
+      </div>
       <div className="flex gap-3 px-6 overflow-x-auto pb-2">
         {badges.map((b) => {
           const locked = profile.xp < b.min && level < b.min;
